@@ -7,3 +7,6 @@ venv/
 .env
 .idea/
 .vscode/
+
+# Go benchmark executable
+benchmarks/gnark/gnark_benchmark
