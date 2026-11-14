@@ -1,0 +1,8 @@
+[package]
+name = "plonky3_benchmark"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+p3-goldilocks = "=0.7.0"
+p3-field = "=0.7.0"
