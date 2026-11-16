@@ -10,3 +10,7 @@ venv/
 
 # Go benchmark executable
 benchmarks/gnark/gnark_benchmark
+
+# Temporary methodology backups
+*.before_methodology_fix
+*.backup

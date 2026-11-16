@@ -62,17 +62,20 @@ fn validate_arithmetic(a: &[Goldilocks], b: &[Goldilocks]) {
     println!("Arithmetic correctness checks passed.");
 }
 
-fn measure<F>(operation: &F) -> u128
+fn measure<F>(operation: &F, output: &mut [Goldilocks]) -> u128
 where
     F: Fn(usize) -> Goldilocks,
 {
     let start = Instant::now();
 
     for i in 0..OPERATIONS {
-        let _ = black_box(operation(i));
+        output[i] = operation(i);
     }
 
-    start.elapsed().as_nanos()
+    let elapsed_ns = start.elapsed().as_nanos();
+    black_box(&output[..]);
+
+    elapsed_ns
 }
 
 fn timestamp_unix() -> u64 {
@@ -86,6 +89,7 @@ fn benchmark_operation<F>(
     writer: &mut BufWriter<File>,
     operation_name: &str,
     operation: F,
+    output: &mut [Goldilocks],
     run_id: &str,
 ) -> std::io::Result<()>
 where
@@ -94,11 +98,11 @@ where
     println!("Benchmarking {operation_name}...");
 
     for _ in 0..WARMUP_ROUNDS {
-        black_box(measure(&operation));
+        measure(&operation, output);
     }
 
     for sample in 1..=SAMPLES {
-        let elapsed_ns = measure(&operation);
+        let elapsed_ns = measure(&operation, output);
         let time_per_operation = elapsed_ns as f64 / OPERATIONS as f64;
         let throughput = OPERATIONS as f64 * 1_000_000_000.0 / elapsed_ns as f64;
 
@@ -150,6 +154,7 @@ fn main() -> std::io::Result<()> {
 
     let (a, b) = generate_inputs();
     validate_arithmetic(&a, &b);
+    let mut output = vec![Goldilocks::ZERO; OPERATIONS];
 
     fs::create_dir_all("../../data/reconstructed")?;
 
@@ -161,16 +166,35 @@ fn main() -> std::io::Result<()> {
         "timestamp_unix,library,library_version,field,field_modulus,operation,sample,operations,total_time_ns,time_per_operation_ns,throughput_operations_per_second,warmup_rounds,exponent,seed,build_mode"
     )?;
 
-    benchmark_operation(&mut writer, "addition", |i| a[i] + b[i], run_id)?;
+    benchmark_operation(
+        &mut writer,
+        "addition",
+        |i| a[i] + b[i],
+        &mut output,
+        run_id,
+    )?;
 
-    benchmark_operation(&mut writer, "subtraction", |i| a[i] - b[i], run_id)?;
+    benchmark_operation(
+        &mut writer,
+        "subtraction",
+        |i| a[i] - b[i],
+        &mut output,
+        run_id,
+    )?;
 
-    benchmark_operation(&mut writer, "multiplication", |i| a[i] * b[i], run_id)?;
+    benchmark_operation(
+        &mut writer,
+        "multiplication",
+        |i| a[i] * b[i],
+        &mut output,
+        run_id,
+    )?;
 
     benchmark_operation(
         &mut writer,
         "exponentiation",
         |i| a[i].exp_u64(EXPONENT),
+        &mut output,
         run_id,
     )?;
 
@@ -178,6 +202,7 @@ fn main() -> std::io::Result<()> {
         &mut writer,
         "inversion",
         |i| a[i].try_inverse().expect("Input must be nonzero"),
+        &mut output,
         run_id,
     )?;
 

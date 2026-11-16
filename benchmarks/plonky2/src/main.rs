@@ -46,6 +46,7 @@ fn measure<Op>(
     exponent: u64,
     run_id: &str,
     writer: &mut BufWriter<File>,
+    output: &mut [F],
     op: Op,
 ) -> std::io::Result<()>
 where
@@ -53,18 +54,21 @@ where
 {
     for _ in 0..WARMUP_ROUNDS {
         for i in 0..OPERATIONS {
-            black_box(op(i));
+            output[i] = op(i);
         }
+        black_box(&output[..]);
     }
 
     for sample in 1..=SAMPLES {
         let start = Instant::now();
 
         for i in 0..OPERATIONS {
-            black_box(op(i));
+            output[i] = op(i);
         }
 
         let elapsed_ns = start.elapsed().as_nanos() as u64;
+        black_box(&output[..]);
+
         let time_per_operation = elapsed_ns as f64 / OPERATIONS as f64;
         let throughput = OPERATIONS as f64 * 1_000_000_000.0 / elapsed_ns as f64;
 
@@ -94,7 +98,6 @@ where
     println!("Completed: {} ({})", operation, run_id);
     Ok(())
 }
-
 fn main() -> std::io::Result<()> {
     let run_id = std::env::args()
         .nth(1)
@@ -122,7 +125,7 @@ fn main() -> std::io::Result<()> {
     let a: Vec<F> = (0..OPERATIONS).map(|_| rng.next_field()).collect();
 
     let b: Vec<F> = (0..OPERATIONS).map(|_| rng.next_field()).collect();
-
+    let mut output = vec![F::ZERO; OPERATIONS];
     println!("Running Plonky2 Goldilocks benchmark");
     println!("Run: {}", run_id);
     println!("Operations per sample: {}", OPERATIONS);
@@ -138,17 +141,33 @@ fn main() -> std::io::Result<()> {
 
     println!("Correctness checks passed.");
 
-    measure("addition", 0, &run_id, &mut writer, |i| a[i] + b[i])?;
-
-    measure("subtraction", 0, &run_id, &mut writer, |i| a[i] - b[i])?;
-
-    measure("multiplication", 0, &run_id, &mut writer, |i| a[i] * b[i])?;
-
-    measure("exponentiation", EXPONENT, &run_id, &mut writer, |i| {
-        a[i].exp_u64(EXPONENT)
+    measure("addition", 0, &run_id, &mut writer, &mut output, |i| {
+        a[i] + b[i]
     })?;
 
-    measure("inversion", 0, &run_id, &mut writer, |i| {
+    measure("subtraction", 0, &run_id, &mut writer, &mut output, |i| {
+        a[i] - b[i]
+    })?;
+
+    measure(
+        "multiplication",
+        0,
+        &run_id,
+        &mut writer,
+        &mut output,
+        |i| a[i] * b[i],
+    )?;
+
+    measure(
+        "exponentiation",
+        EXPONENT,
+        &run_id,
+        &mut writer,
+        &mut output,
+        |i| a[i].exp_u64(EXPONENT),
+    )?;
+
+    measure("inversion", 0, &run_id, &mut writer, &mut output, |i| {
         a[i].try_inverse().expect("Input must be nonzero")
     })?;
 

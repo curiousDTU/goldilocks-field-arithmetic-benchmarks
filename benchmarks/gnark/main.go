@@ -97,40 +97,103 @@ func validateArithmetic(
 
 type operationFunc func(int, *goldilocks.Element)
 
-func measure(
-	a, b []goldilocks.Element,
-	output []goldilocks.Element,
-	operation operationFunc,
+func measureAddition(
+	a, b, output []goldilocks.Element,
 ) int64 {
 	start := time.Now()
 
 	for i := 0; i < operations; i++ {
-		operation(i, &output[i])
+		output[i].Add(&a[i], &b[i])
 	}
 
+	elapsed := time.Since(start)
 	runtime.KeepAlive(a)
 	runtime.KeepAlive(b)
 	runtime.KeepAlive(output)
 
-	return time.Since(start).Nanoseconds()
+	return elapsed.Nanoseconds()
+}
+
+func measureSubtraction(
+	a, b, output []goldilocks.Element,
+) int64 {
+	start := time.Now()
+
+	for i := 0; i < operations; i++ {
+		output[i].Sub(&a[i], &b[i])
+	}
+
+	elapsed := time.Since(start)
+	runtime.KeepAlive(a)
+	runtime.KeepAlive(b)
+	runtime.KeepAlive(output)
+
+	return elapsed.Nanoseconds()
+}
+
+func measureMultiplication(
+	a, b, output []goldilocks.Element,
+) int64 {
+	start := time.Now()
+
+	for i := 0; i < operations; i++ {
+		output[i].Mul(&a[i], &b[i])
+	}
+
+	elapsed := time.Since(start)
+	runtime.KeepAlive(a)
+	runtime.KeepAlive(b)
+	runtime.KeepAlive(output)
+
+	return elapsed.Nanoseconds()
+}
+
+func measureExponentiation(
+	a, output []goldilocks.Element, exponentBig *big.Int,
+) int64 {
+	start := time.Now()
+
+	for i := 0; i < operations; i++ {
+		output[i].Exp(a[i], exponentBig)
+	}
+
+	elapsed := time.Since(start)
+	runtime.KeepAlive(a)
+	runtime.KeepAlive(output)
+
+	return elapsed.Nanoseconds()
+}
+
+func measureInversion(
+	a, output []goldilocks.Element,
+) int64 {
+	start := time.Now()
+
+	for i := 0; i < operations; i++ {
+		output[i].Inverse(&a[i])
+	}
+
+	elapsed := time.Since(start)
+	runtime.KeepAlive(a)
+	runtime.KeepAlive(output)
+
+	return elapsed.Nanoseconds()
 }
 
 func benchmarkOperation(
 	writer *csv.Writer,
 	name string,
-	a, b, output []goldilocks.Element,
-	operation operationFunc,
+	measure func() int64,
 	runID string,
-	exponentBig *big.Int,
 ) error {
 	fmt.Printf("Benchmarking %s...\n", name)
 
 	for i := 0; i < warmupRounds; i++ {
-		measure(a, b, output, operation)
+		measure()
 	}
 
 	for sample := 1; sample <= samples; sample++ {
-		elapsed := measure(a, b, output, operation)
+		elapsed := measure()
 
 		timePerOperation := float64(elapsed) / float64(operations)
 		throughput := float64(operations) * 1_000_000_000 / float64(elapsed)
@@ -169,10 +232,8 @@ func benchmarkOperation(
 	}
 
 	fmt.Printf("Completed %s for %s.\n", name, runID)
-	_ = exponentBig
 	return nil
 }
-
 func main() {
 	runID := "RECON_RUN1"
 	if len(os.Args) > 1 {
@@ -232,37 +293,37 @@ func main() {
 	}
 
 	benchmarks := []struct {
-		name string
-		fn   operationFunc
+		name    string
+		measure func() int64
 	}{
 		{
 			"addition",
-			func(i int, z *goldilocks.Element) {
-				z.Add(&a[i], &b[i])
+			func() int64 {
+				return measureAddition(a, b, output)
 			},
 		},
 		{
 			"subtraction",
-			func(i int, z *goldilocks.Element) {
-				z.Sub(&a[i], &b[i])
+			func() int64 {
+				return measureSubtraction(a, b, output)
 			},
 		},
 		{
 			"multiplication",
-			func(i int, z *goldilocks.Element) {
-				z.Mul(&a[i], &b[i])
+			func() int64 {
+				return measureMultiplication(a, b, output)
 			},
 		},
 		{
 			"exponentiation",
-			func(i int, z *goldilocks.Element) {
-				z.Exp(a[i], exponentBig)
+			func() int64 {
+				return measureExponentiation(a, output, exponentBig)
 			},
 		},
 		{
 			"inversion",
-			func(i int, z *goldilocks.Element) {
-				z.Inverse(&a[i])
+			func() int64 {
+				return measureInversion(a, output)
 			},
 		},
 	}
@@ -271,12 +332,8 @@ func main() {
 		if err := benchmarkOperation(
 			writer,
 			benchmark.name,
-			a,
-			b,
-			output,
-			benchmark.fn,
+			benchmark.measure,
 			runID,
-			exponentBig,
 		); err != nil {
 			panic(err)
 		}
