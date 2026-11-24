@@ -1,0 +1,4 @@
+operation,n_pairs,plonky2_mean_ns,plonky3_mean_ns,mean_difference_ns,percentage_difference,t_statistic,t_p_value,wilcoxon_statistic,wilcoxon_p_value,t_p_holm,wilcoxon_p_holm,t_significant,wilcoxon_significant
+addition,3,1.96624633,2.45085467,0.48460833,24.64636933,9.43226596,0.01105402,0.00000000,0.25000000,0.03316205,0.75000000,True,False
+subtraction,3,1.93617650,2.45277450,0.51659800,26.68134852,8.08620302,0.01495150,0.00000000,0.25000000,0.03316205,0.75000000,True,False
+multiplication,3,2.45351717,2.46011633,0.00659917,0.26896762,0.98861969,0.42705500,1.00000000,0.50000000,0.42705500,0.75000000,False,False
