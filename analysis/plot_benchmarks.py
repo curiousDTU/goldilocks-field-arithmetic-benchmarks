@@ -148,12 +148,12 @@ if __name__ == "__main__":
     performance_plot(
         ["addition", "subtraction", "multiplication"],
         "performance_basic_operations",
-        "Median Latency of Basic Goldilocks Field Operations",
+        "Mean of Run Medians: Basic Goldilocks Field Operations",
     )
     performance_plot(
         ["exponentiation", "inversion"],
         "performance_expensive_operations",
-        "Median Latency of Expensive Goldilocks Field Operations",
+        "Mean of Run Medians: Expensive Goldilocks Field Operations",
     )
     reproducibility_plot()
     print(f"Figures saved in {FIGURE_DIR}")
